@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="A secure, cryptographically strong password generator with bulk export capabilities. Generate passwords offline with modern web standards.">
+    <meta name="theme-color" content="#022742">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Apple iOS PWA Support -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="PW Generator">
+    <link rel="apple-touch-icon" href="icons/ios/152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="icons/ios/180.png">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/ios/32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="icons/ios/16.png">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.14.0/css/all.min.css"
+        integrity="sha512-1PKOgIY59xJ8Co8+NE6FZ+LOAZKjy+KY8iq0G4B3CyeY6wYHN3yt9PW0XpSriVlkMXe40PTKnXrLnZ9+fkDaog=="
+        crossorigin="anonymous" />
+    <link rel="stylesheet" href="style.css" />
+    <title>Password Generator - Heliox Group</title>
+</head>
+
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>Password Generator</h1>
+        </header>
+
+        <div class="password-display">
+            <div class="password-wrapper">
+                <span id="result" aria-live="polite" aria-label="Generated password">Generating...</span>
+            </div>
+            <button class="btn-icon" id="clipboard" aria-label="Copy password to clipboard" title="Copy to clipboard">
+                <i class="far fa-clipboard" aria-hidden="true"></i>
+            </button>
+        </div>
+
+        <div id="notification" class="notification" role="alert" aria-live="polite"></div>
+
+        <div class="settings-card">
+            <div class="setting-group">
+                <label for="length" class="setting-label">
+                    <span>Password Length</span>
+                    <span class="length-value" id="lengthValue">18</span>
+                </label>
+                <input type="range" id="length" min="6" max="32" value="18" class="slider"
+                    aria-describedby="length-hint">
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="setting-group">
+                <label for="uppercase" class="checkbox-label">
+                    <input type="checkbox" id="uppercase" checked>
+                    <span class="checkbox-custom"></span>
+                    <span class="checkbox-text">Uppercase Letters (A-Z)</span>
+                </label>
+            </div>
+
+            <div class="setting-group">
+                <label for="lowercase" class="checkbox-label">
+                    <input type="checkbox" id="lowercase" checked>
+                    <span class="checkbox-custom"></span>
+                    <span class="checkbox-text">Lowercase Letters (a-z)</span>
+                </label>
+            </div>
+
+            <div class="setting-group">
+                <label for="numbers" class="checkbox-label">
+                    <input type="checkbox" id="numbers" checked>
+                    <span class="checkbox-custom"></span>
+                    <span class="checkbox-text">Numbers (0-9)</span>
+                </label>
+            </div>
+
+            <div class="setting-group">
+                <label for="symbols" class="checkbox-label">
+                    <input type="checkbox" id="symbols" checked>
+                    <span class="checkbox-custom"></span>
+                    <span class="checkbox-text">Symbols (!@#$%^&*)</span>
+                </label>
+            </div>
+        </div>
+
+        <button class="btn-generate" id="generate">
+            <i class="fas fa-key" aria-hidden="true"></i>
+            <span>Generate Password</span>
+        </button>
+
+        <div class="bulk-export-section">
+            <div class="bulk-header" id="bulkToggle">
+                <i class="fas fa-download" aria-hidden="true"></i>
+                <span>Bulk Export to CSV</span>
+                <i class="fas fa-chevron-down toggle-icon" aria-hidden="true"></i>
+            </div>
+            <div class="bulk-content" id="bulkContent">
+                <div class="bulk-input-group">
+                    <label for="bulkCount">Number of passwords:</label>
+                    <input type="number" id="bulkCount" min="1" max="500" value="10" class="bulk-input">
+                </div>
+                <button class="btn-export" id="exportCsv">
+                    <i class="fas fa-file-csv" aria-hidden="true"></i>
+                    <span>Export CSV</span>
+                </button>
+            </div>
+        </div>
+
+        <footer class="footer">
+            <p>Made with <span class="heart">♥</span> by <a href="https://sites.google.com/helioxgroup.com/edwardjaeger"
+                    target="_blank" rel="noopener noreferrer">Edward Jaeger</a></p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+    
+    <!-- Service Worker Registration with Auto-Update -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            let refreshing = false;
+            
+            // Detect controller change and reload page
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (!refreshing) {
+                    refreshing = true;
+                    window.location.reload();
+                }
+            });
+            
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/pwgenerator/service-worker.js')
+                    .then(registration => {
+                        console.log('Service Worker registered successfully:', registration.scope);
+                        
+                        // Check for updates every 60 seconds while app is open
+                        setInterval(() => {
+                            registration.update();
+                        }, 60000);
+                        
+                        // Check for updates when app becomes visible
+                        document.addEventListener('visibilitychange', () => {
+                            if (!document.hidden) {
+                                registration.update();
+                            }
+                        });
+                        
+                        // Listen for waiting service worker
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    // New service worker available, tell it to take over
+                                    newWorker.postMessage({ type: 'SKIP_WAITING' });
+                                }
+                            });
+                        });
+                    })
+                    .catch(error => {
+                        console.log('Service Worker registration failed:', error);
+                    });
+            });
+        }
+    </script>
+</body>
+
+</html>
