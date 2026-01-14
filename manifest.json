@@ -1,9 +1,9 @@
 {
-  "name": "Password Generator",
+  "name": "Password Generator by Edward Jaeger",
   "short_name": "PW Generator",
   "description": "A secure, cryptographically strong password generator with bulk export capabilities",
-  "start_url": "/pwgenerator/",
-  "scope": "/pwgenerator/",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#022742",
   "theme_color": "#022742",
