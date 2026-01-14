@@ -1,4 +1,4 @@
-const CACHE_NAME = 'heliox-pwgen-v1.2.8';
+const CACHE_NAME = 'heliox-pwgen-v1.2.9';
 const urlsToCache = [
   '/pwgenerator/',
   '/pwgenerator/index.html',
