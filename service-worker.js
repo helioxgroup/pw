@@ -5,6 +5,11 @@ const urlsToCache = [
   '/pwgenerator/style.css',
   '/pwgenerator/script.js',
   '/pwgenerator/manifest.json',
+  '/',
+  '/index.html',
+  '/style.css',
+  '/script.js',
+  '/manifest.json',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.14.0/css/all.min.css',
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap'
 ];
