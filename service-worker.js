@@ -1,10 +1,5 @@
 const CACHE_NAME = 'heliox-pwgen-v1.2.9';
 const urlsToCache = [
-  '/pwgenerator/',
-  '/pwgenerator/index.html',
-  '/pwgenerator/style.css',
-  '/pwgenerator/script.js',
-  '/pwgenerator/manifest.json',
   '/',
   '/index.html',
   '/style.css',
