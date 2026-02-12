@@ -13,13 +13,6 @@ const bulkContentEl = document.getElementById('bulkContent');
 const bulkCountEl = document.getElementById('bulkCount');
 const exportCsvEl = document.getElementById('exportCsv');
 
-const randomFunc = {
-    lower: getRandomLower,
-    upper: getRandomUpper,
-    number: getRandomNumber,
-    symbol: getRandomSymbol
-};
-
 // Toggle bulk export section
 bulkToggleEl.addEventListener('click', () => {
     bulkToggleEl.classList.toggle('active');
@@ -80,9 +73,10 @@ function generateCSV(passwords, length, hasLower, hasUpper, hasNumber, hasSymbol
     // Current date and time
     const now = new Date().toLocaleString();
     
-    // Add each password as a row
+    // Add each password as a row (escape double quotes for CSV safety)
     passwords.forEach(password => {
-        csv += `"${password}",${length},"${typesStr}","${now}"\n`;
+        const escaped = password.replace(/"/g, '""');
+        csv += `"${escaped}",${length},"${typesStr}","${now}"\n`;
     });
     
     return csv;
@@ -92,18 +86,13 @@ function generateCSV(passwords, length, hasLower, hasUpper, hasNumber, hasSymbol
 function downloadCSV(content, filename) {
     const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
-    
-    if (navigator.msSaveBlob) { // IE 10+
-        navigator.msSaveBlob(blob, filename);
-    } else {
-        link.href = URL.createObjectURL(blob);
-        link.download = filename;
-        link.style.display = 'none';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(link.href);
-    }
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
 }
 
 // Update length value display when slider changes
@@ -131,13 +120,14 @@ clipboardEl.addEventListener('click', async () => {
         await navigator.clipboard.writeText(password);
         showNotification('Password copied to clipboard!', 'success');
         
-        // Visual feedback - briefly change icon
-        const icon = clipboardEl.querySelector('i');
-        icon.classList.remove('fa-clipboard');
-        icon.classList.add('fa-check');
+        // Visual feedback - briefly swap to checkmark SVG
+        const icon = clipboardEl.querySelector('svg');
+        const originalPath = icon.innerHTML;
+        icon.setAttribute('viewBox', '0 0 512 512');
+        icon.innerHTML = '<path d="M173.898 439.404l-166.4-166.4c-9.997-9.997-9.997-26.206 0-36.204l36.203-36.204c9.997-9.998 26.207-9.998 36.204 0L192 312.69 432.095 72.596c9.997-9.997 26.207-9.997 36.204 0l36.203 36.204c9.997 9.997 9.997 26.206 0 36.204l-294.4 294.401c-9.998 9.997-26.207 9.997-36.204-.001z"/>';
         setTimeout(() => {
-            icon.classList.remove('fa-check');
-            icon.classList.add('fa-clipboard');
+            icon.setAttribute('viewBox', '0 0 384 512');
+            icon.innerHTML = originalPath;
         }, 2000);
     } catch (err) {
         // Fallback for older browsers
@@ -226,7 +216,6 @@ function generatePassword() {
 // Create password with crypto-secure randomness and proper shuffling
 function createPassword(lower, upper, number, symbol, length) {
     let chars = '';
-    let password = '';
     
     // Build character set
     if (lower) chars += 'abcdefghijklmnopqrstuvwxyz';
@@ -235,19 +224,31 @@ function createPassword(lower, upper, number, symbol, length) {
     if (symbol) chars += '!@#$%^&*(){}[]=<>/,.';
     
     // Ensure at least one character from each selected type
-    const types = [];
-    if (lower) types.push(getRandomLower());
-    if (upper) types.push(getRandomUpper());
-    if (number) types.push(getRandomNumber());
-    if (symbol) types.push(getRandomSymbol());
+    const required = [];
+    if (lower) required.push(getRandomLower());
+    if (upper) required.push(getRandomUpper());
+    if (number) required.push(getRandomNumber());
+    if (symbol) required.push(getRandomSymbol());
     
-    // Add one of each required type first
-    password = types.join('');
+    // Generate remaining characters in batch for efficiency
+    const remaining = length - required.length;
+    const randomBuffer = new Uint32Array(remaining);
+    crypto.getRandomValues(randomBuffer);
     
-    // Fill the rest with random characters from the full set
-    for (let i = password.length; i < length; i++) {
-        password += chars[getSecureRandomInt(chars.length)];
+    const fillChars = [];
+    for (let i = 0; i < remaining; i++) {
+        const limit = Math.floor(0x100000000 / chars.length) * chars.length;
+        let val = randomBuffer[i];
+        // Rejection sampling on batch values - regenerate if biased
+        while (val >= limit) {
+            const singleBuf = new Uint32Array(1);
+            crypto.getRandomValues(singleBuf);
+            val = singleBuf[0];
+        }
+        fillChars.push(chars[val % chars.length]);
     }
+    
+    const password = required.concat(fillChars).join('');
     
     // Shuffle the password to avoid predictable patterns
     return shuffleString(password);
@@ -263,10 +264,13 @@ function shuffleString(str) {
     return arr.join('');
 }
 
-// Get crypto-secure random integer
+// Get crypto-secure random integer (rejection sampling to eliminate modulo bias)
 function getSecureRandomInt(max) {
     const randomBuffer = new Uint32Array(1);
-    crypto.getRandomValues(randomBuffer);
+    const limit = Math.floor(0x100000000 / max) * max;
+    do {
+        crypto.getRandomValues(randomBuffer);
+    } while (randomBuffer[0] >= limit);
     return randomBuffer[0] % max;
 }
 
